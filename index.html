@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="ur" dir="rtl" id="htmlRoot">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بجلی میٹر ٹریکر / Electricity Meter Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#12161C">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#12161C;
+    --surface:#1B212B;
+    --surface-2:#232A35;
+    --accent:#FFB020;
+    --accent-2:#38BDF8;
+    --text:#EDEFF2;
+    --text-muted:#8B95A3;
+    --good:#34D399;
+    --warn:#F87171;
+    --border:#2C3441;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(1200px 800px at 50% -10%, #1a2029 0%, var(--bg) 55%);
+    color:var(--text);
+    font-family:'Noto Naskh Urdu','Segoe UI',Tahoma,sans-serif;
+    min-height:100vh;
+    padding-bottom:60px;
+  }
+  html[lang="en"] body{ font-family:'Segoe UI',Tahoma,Arial,sans-serif; }
+  h1,h2,h3{ font-weight:700; margin:0; }
+  html[lang="ur"] h1, html[lang="ur"] h2{ font-family:'Noto Nastaliq Urdu','Jameel Noori Nastaleeq',serif; }
+  .digits{
+    font-family:'Consolas','Courier New',monospace;
+    letter-spacing:1px;
+    direction:ltr;
+    unicode-bidi:isolate;
+  }
+  header{
+    position:sticky;top:0;z-index:20;
+    background:rgba(18,22,28,0.92);
+    backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--border);
+    padding:16px 16px 12px;
+    text-align:center;
+  }
+  .lang-switch{
+    position:absolute; top:14px;
+    inset-inline-end:14px;
+    display:flex; gap:4px;
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:20px; padding:3px;
+  }
+  .lang-switch button{
+    border:none; border-radius:16px; padding:5px 12px; font-size:.75rem;
+    background:transparent; color:var(--text-muted);
+  }
+  .lang-switch button.active{ background:var(--accent); color:#1a1200; font-weight:700; }
+  header h1{font-size:1.4rem;color:var(--accent);}
+  header h1 span{color:var(--text);}
+  header p{margin:4px 0 0;color:var(--text-muted);font-size:.82rem;}
+
+  .wrap{max-width:680px;margin:0 auto;padding:16px;position:relative;}
+
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+  button{
+    font-family:inherit;font-size:.88rem;cursor:pointer;
+    border:1px solid var(--border);
+    background:var(--surface-2);
+    color:var(--text);
+    padding:10px 14px;border-radius:10px;
+    transition:transform .12s ease, border-color .12s ease;
+  }
+  button:active{transform:scale(.96);}
+  .btn-primary{background:var(--accent);color:#1a1200;border-color:var(--accent);font-weight:700;}
+  .btn-ghost{background:transparent;}
+  .btn-danger{color:var(--warn);border-color:var(--warn);background:transparent;}
+  .btn-sm{padding:6px 10px;font-size:.78rem;}
+  .toolbar button{flex:1;min-width:140px;}
+
+  .meter-card{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:16px;
+    margin-bottom:16px;
+    position:relative;
+    overflow:hidden;
+  }
+  .meter-card::before{
+    content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;
+    background:linear-gradient(var(--accent),var(--accent-2));
+  }
+  .meter-card.alert::before{ background:var(--warn); }
+  .meter-head{display:flex;align-items:center;gap:12px;justify-content:space-between;}
+  .meter-title{display:flex;align-items:center;gap:10px;}
+  .dial{width:56px;height:56px;flex:none;}
+  .meter-name{font-size:1.05rem;font-weight:700;}
+  .meter-loc{color:var(--text-muted);font-size:.78rem;}
+  .badge{
+    display:inline-block;font-size:.68rem;font-weight:700;
+    background:var(--warn);color:#2a0d0d;padding:2px 8px;border-radius:10px;margin-inline-start:6px;
+  }
+
+  .stat-row{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .stat{
+    background:var(--surface-2);
+    border-radius:10px;
+    padding:8px 12px;
+    flex:1;min-width:100px;text-align:center;
+  }
+  .stat .label{font-size:.68rem;color:var(--text-muted);}
+  .stat .value{font-size:1.1rem;color:var(--accent);font-weight:700;}
+  .stat .value.over{ color:var(--warn); }
+
+  .chart-wrap{margin-top:14px;overflow-x:auto;}
+  .chart-title{font-size:.75rem;color:var(--text-muted);margin-bottom:6px;}
+
+  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.84rem;}
+  th,td{padding:7px 6px;text-align:center;border-bottom:1px solid var(--border);}
+  th{color:var(--text-muted);font-weight:600;font-size:.76rem;}
+  td.unit-up{color:var(--warn);font-weight:700;}
+  td.unit-ok{color:var(--good);}
+  .row-actions button{padding:3px 7px;font-size:.68rem;}
+
+  .card-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .card-actions button{flex:1;min-width:90px;}
+
+  .empty{
+    text-align:center;color:var(--text-muted);
+    padding:40px 20px;border:1px dashed var(--border);border-radius:16px;
+  }
+
+  dialog{
+    border:none;border-radius:16px;padding:0;
+    background:var(--surface);color:var(--text);
+    width:min(92vw,420px);
+  }
+  dialog::backdrop{background:rgba(0,0,0,.6);}
+  .dialog-inner{padding:20px;}
+  .dialog-inner h3{margin-bottom:14px;color:var(--accent);}
+  label{display:block;font-size:.8rem;color:var(--text-muted);margin:10px 0 4px;}
+  input{
+    width:100%;padding:10px;border-radius:8px;
+    border:1px solid var(--border);background:var(--surface-2);color:var(--text);
+    font-family:inherit;font-size:.95rem;
+  }
+  .dialog-actions{display:flex;gap:8px;margin-top:18px;}
+  .dialog-actions button{flex:1;}
+
+  #printArea{display:none;}
+  @media print{
+    body *{visibility:hidden;}
+    #printArea, #printArea *{visibility:visible;}
+    #printArea{
+      display:block !important;position:absolute;inset-inline-start:0;top:0;width:100%;
+      color:#000;background:#fff;padding:20px;
+    }
+    #printArea table{width:100%;border-collapse:collapse;}
+    #printArea th,#printArea td{border:1px solid #999;padding:6px;color:#000;}
+    #printArea h1,#printArea h2{color:#000;font-family:serif;}
+  }
+  footer{text-align:center;color:var(--text-muted);font-size:.72rem;margin-top:30px;padding:0 20px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="lang-switch">
+    <button id="langUrBtn" onclick="setLang('ur')">اردو</button>
+    <button id="langEnBtn" onclick="setLang('en')">EN</button>
+  </div>
+  <h1>⚡ <span data-i18n="title"></span></h1>
+  <p data-i18n="subtitle"></p>
+</header>
+
+<div class="wrap">
+  <div class="toolbar">
+    <button class="btn-primary" onclick="openAddMeter()">➕ <span data-i18n="addMeterBtn"></span></button>
+    <button class="btn-ghost" onclick="exportPDFAll()">📄 <span data-i18n="fullReportBtn"></span></button>
+    <button class="btn-ghost" onclick="exportBackup()">💾 <span data-i18n="backupBtn"></span></button>
+    <button class="btn-ghost" onclick="document.getElementById('restoreFile').click()">📂 <span data-i18n="restoreBtn"></span></button>
+    <input type="file" id="restoreFile" accept="application/json" style="display:none" onchange="importBackup(event)">
+  </div>
+
+  <div id="metersList"></div>
+</div>
+
+<footer data-i18n="footerNote"></footer>
+
+<!-- Add Meter Dialog -->
+<dialog id="meterDialog">
+  <div class="dialog-inner">
+    <input type="hidden" id="mEditId">
+    <h3 id="meterDialogTitle" data-i18n="addMeterTitle"></h3>
+    <label data-i18n="nameLabel"></label>
+    <input type="text" id="mName">
+    <label data-i18n="locLabel"></label>
+    <input type="text" id="mLoc">
+    <label data-i18n="rateLabel"></label>
+    <input type="number" step="0.01" id="mRate">
+    <label data-i18n="refLabel"></label>
+    <input type="text" id="mRefNo" maxlength="14" placeholder="e.g. 07123456789012">
+    <div style="font-size:.72rem;color:var(--text-muted);margin-top:-4px" data-i18n="refHint"></div>
+    <label data-i18n="thresholdLabel"></label>
+    <input type="number" step="1" id="mThreshold" value="150">
+    <label data-i18n="initReadingLabel"></label>
+    <input type="number" step="0.01" id="mInitReading">
+    <label data-i18n="initDateLabel"></label>
+    <input type="date" id="mInitDate">
+    <div class="dialog-actions">
+      <button class="btn-ghost" onclick="closeDialog('meterDialog')" data-i18n="cancel"></button>
+      <button class="btn-primary" id="meterSaveBtn" onclick="saveMeter()" data-i18n="save"></button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Add Reading Dialog -->
+<dialog id="readingDialog">
+  <div class="dialog-inner">
+    <h3 id="readingDialogTitle" data-i18n="addReadingTitle"></h3>
+    <input type="hidden" id="rMeterId">
+    <input type="hidden" id="rReadingId">
+    <label data-i18n="currentReadingLabel"></label>
+    <input type="number" step="0.01" id="rValue">
+    <label data-i18n="dateLabel"></label>
+    <input type="date" id="rDate">
+    <label data-i18n="noteLabel"></label>
+    <input type="text" id="rNote">
+    <div class="dialog-actions">
+      <button class="btn-ghost" onclick="closeDialog('readingDialog')" data-i18n="cancel"></button>
+      <button class="btn-primary" id="readingSaveBtn" onclick="saveReading()" data-i18n="save"></button>
+    </div>
+  </div>
+</dialog>
+
+<!-- MEPCO Reference Number Dialog -->
+<dialog id="mepcoRefDialog">
+  <div class="dialog-inner">
+    <h3 data-i18n="mepcoDialogTitle"></h3>
+    <p style="font-size:.82rem;color:var(--text-muted)" data-i18n="mepcoDialogHint"></p>
+    <input type="text" readonly id="mepcoRefDisplay" onclick="this.select(); this.setSelectionRange(0,9999);"
+      onfocus="this.select(); this.setSelectionRange(0,9999);"
+      class="digits" style="font-size:1.6rem;font-weight:700;color:var(--accent);
+      background:var(--surface-2);border:1px dashed var(--border);border-radius:10px;
+      padding:16px;text-align:center;margin:12px 0;letter-spacing:2px;width:100%;">
+    <div style="font-size:.72rem;color:var(--text-muted);text-align:center;margin-top:-6px" data-i18n="tapToSelectHint"></div>
+    <div id="mepcoCopyStatus" style="font-size:.78rem;color:var(--good);text-align:center;min-height:16px;"></div>
+    <div class="dialog-actions">
+      <button class="btn-ghost" onclick="manualCopyRef()" id="mepcoCopyBtn">📋 <span data-i18n="copyBtn"></span></button>
+      <button class="btn-primary" onclick="openPortalAndClose()">🔗 <span data-i18n="openPortalBtn"></span></button>
+    </div>
+    <div class="dialog-actions">
+      <button class="btn-ghost" onclick="closeDialog('mepcoRefDialog')" data-i18n="cancel"></button>
+    </div>
+  </div>
+</dialog>
+
+<div id="printArea"></div>
+
+<script>
+const STORAGE_KEY = 'emt_meters_v1';
+const LANG_KEY = 'emt_lang';
+let meters = [];
+let currentLang = localStorage.getItem(LANG_KEY) || 'ur';
+
+const I18N = {
+  ur: {
+    title: 'بجلی میٹر ٹریکر',
+    subtitle: 'آف لائن ایپ — ڈیٹا صرف اسی فون/براؤزر میں محفوظ ہوتا ہے',
+    addMeterBtn: 'نیا میٹر شامل کریں',
+    fullReportBtn: 'مکمل رپورٹ (PDF)',
+    backupBtn: 'بیک اپ محفوظ کریں',
+    restoreBtn: 'بیک اپ بحال کریں',
+    footerNote: 'تمام ڈیٹا آپ کے فون کی مقامی سٹوریج میں محفوظ رہتا ہے۔ باقاعدگی سے بیک اپ لینا نہ بھولیں۔',
+    addMeterTitle: 'نیا میٹر شامل کریں',
+    nameLabel: 'میٹر کا نام (مثلاً: گھر، دکان، اوپر والا حصہ)',
+    locLabel: 'مقام / تفصیل (اختیاری)',
+    rateLabel: 'فی یونٹ ریٹ - روپے میں (اختیاری، تخمینی بل کے لیے)',
+    thresholdLabel: 'حد (یونٹ) — اس سے زیادہ استعمال پر گراف سرخ ہو جائے گا',
+    refLabel: 'MEPCO 14 ہندسوں کا ریفرنس نمبر (اختیاری)',
+    refHint: 'یہ نمبر آپ کے پرانے بل کے اوپری حصے پر لکھا ہوتا ہے',
+    mepcoBillBtn: 'MEPCO بل چیک کریں',
+    refCopied: 'ریفرنس نمبر کاپی ہو گیا ✓ اب کھلنے والے صفحے پر پیسٹ کر دیں',
+    noRefSet: 'اس میٹر کے لیے ابھی ریفرنس نمبر درج نہیں ہوا۔ پہلے "ترمیم" میں جا کر ریفرنس نمبر شامل کریں۔',
+    mepcoDialogTitle: 'آپ کا MEPCO ریفرنس نمبر',
+    mepcoDialogHint: 'یہ نمبر خودکار کاپی کرنے کی کوشش کی گئی ہے۔ اگر پیسٹ نہ ہو تو نیچے دیا نمبر دیکھ کر خود ٹائپ کر لیں یا "کاپی کریں" دبائیں۔',
+    copyBtn: 'کاپی کریں',
+    copiedStatus: 'کاپی ہو گیا ✓',
+    openPortalBtn: 'MEPCO پورٹل کھولیں',
+    tapToSelectHint: 'نمبر پر ٹچ کریں تو وہ خودکار منتخب ہو جائے گا — پھر لمبا دبا کر "Copy" چنیں',
+    copyManualHint: 'خودکار کاپی نہیں ہو سکی۔ نمبر منتخب ہو چکا ہے، لمبا دبا کر "Copy" چنیں',
+    initReadingLabel: 'ابتدائی ریڈنگ',
+    initDateLabel: 'ریڈنگ کی تاریخ',
+    cancel: 'منسوخ',
+    save: 'محفوظ کریں',
+    addReadingTitle: 'نئی ریڈنگ درج کریں',
+    currentReadingLabel: 'موجودہ ریڈنگ',
+    dateLabel: 'تاریخ',
+    noteLabel: 'نوٹ (اختیاری)',
+    deleteMeterBtn: 'میٹر حذف کریں',
+    editMeterBtn: 'ترمیم',
+    editMeterTitle: 'میٹر کی تفصیلات میں ترمیم کریں',
+    editReadingTitle: 'ریڈنگ میں ترمیم کریں',
+    editBtn: 'ترمیم',
+    update: 'اپڈیٹ کریں',
+    addReadingBtn: 'نئی ریڈنگ',
+    meterReportBtn: 'اس میٹر کی رپورٹ',
+    firstReading: 'ابتدائی ریڈنگ',
+    lastReading: 'تازہ ترین ریڈنگ',
+    totalUnits: 'کل یونٹ استعمال',
+    estBill: 'تخمینی بل (روپے)',
+    avgDaily: 'اوسط یومیہ یونٹ',
+    dailyUsageChart: 'یومیہ/فی ریڈنگ یونٹ استعمال کا گراف',
+    tableDate: 'تاریخ', tableReading: 'ریڈنگ', tableUnits: 'یونٹ (فرق)', tableNote: 'نوٹ',
+    noReadings: 'کوئی ریڈنگ موجود نہیں',
+    noMeters: 'ابھی کوئی میٹر شامل نہیں ہوا۔ اوپر "نیا میٹر شامل کریں" پر کلک کریں۔',
+    confirmDeleteMeter: 'کیا آپ واقعی اس میٹر کو حذف کرنا چاہتے ہیں؟ اس کا سارا ڈیٹا ختم ہو جائے گا۔',
+    alertName: 'براہ کرم میٹر کا نام درج کریں',
+    alertReading: 'براہ کرم درست ریڈنگ درج کریں',
+    alertNoMeters: 'پہلے کوئی میٹر شامل کریں',
+    restoreConfirmMsg: 'موجودہ ڈیٹا اس بیک اپ سے تبدیل ہو جائے گا۔ جاری رکھیں؟',
+    restoreSuccess: 'بیک اپ کامیابی سے بحال ہو گیا۔',
+    restoreInvalid: 'یہ فائل درست بیک اپ فائل نہیں ہے۔',
+    highUsage: 'زیادہ استعمال',
+    threshLine: 'حد',
+    printTitle: 'بجلی میٹر رپورٹ',
+    printGenerated: 'تیار کردہ'
+  },
+  en: {
+    title: 'Electricity Meter Tracker',
+    subtitle: 'Offline app — your data stays only on this phone/browser',
+    addMeterBtn: 'Add New Meter',
+    fullReportBtn: 'Full Report (PDF)',
+    backupBtn: 'Save Backup',
+    restoreBtn: 'Restore Backup',
+    footerNote: 'All data is stored locally on your phone. Remember to back up regularly.',
+    addMeterTitle: 'Add New Meter',
+    nameLabel: 'Meter name (e.g. Home, Shop, Upper Portion)',
+    locLabel: 'Location / description (optional)',
+    rateLabel: 'Rate per unit — in Rs (optional, for estimated bill)',
+    thresholdLabel: 'Threshold (units) — chart turns red above this',
+    refLabel: 'MEPCO 14-digit reference number (optional)',
+    refHint: 'Found at the top of your previous paper bill',
+    mepcoBillBtn: 'Check MEPCO Bill',
+    refCopied: 'Reference number copied ✓ paste it on the page that just opened',
+    noRefSet: 'No reference number set for this meter yet. Add it via "Edit" first.',
+    mepcoDialogTitle: 'Your MEPCO Reference Number',
+    mepcoDialogHint: 'We tried to auto-copy this number. If it does not paste, note it down below or tap "Copy".',
+    copyBtn: 'Copy',
+    copiedStatus: 'Copied ✓',
+    openPortalBtn: 'Open MEPCO Portal',
+    tapToSelectHint: 'Tap the number to auto-select it, then long-press and choose "Copy"',
+    copyManualHint: 'Auto-copy failed. The number is selected — long-press and choose "Copy"',
+    initReadingLabel: 'Initial reading',
+    initDateLabel: 'Reading date',
+    cancel: 'Cancel',
+    save: 'Save',
+    addReadingTitle: 'Add New Reading',
+    currentReadingLabel: 'Current reading',
+    dateLabel: 'Date',
+    noteLabel: 'Note (optional)',
+    deleteMeterBtn: 'Delete Meter',
+    editMeterBtn: 'Edit',
+    editMeterTitle: 'Edit Meter Details',
+    editReadingTitle: 'Edit Reading',
+    editBtn: 'Edit',
+    update: 'Update',
+    addReadingBtn: 'New Reading',
+    meterReportBtn: "This Meter's Report",
+    firstReading: 'Initial Reading',
+    lastReading: 'Latest Reading',
+    totalUnits: 'Total Units Used',
+    estBill: 'Estimated Bill (Rs)',
+    avgDaily: 'Avg Daily Units',
+    dailyUsageChart: 'Per-reading / daily usage chart',
+    tableDate: 'Date', tableReading: 'Reading', tableUnits: 'Units (diff)', tableNote: 'Note',
+    noReadings: 'No readings yet',
+    noMeters: 'No meters added yet. Click "Add New Meter" above.',
+    confirmDeleteMeter: 'Are you sure you want to delete this meter? All its data will be lost.',
+    alertName: 'Please enter a meter name',
+    alertReading: 'Please enter a valid reading',
+    alertNoMeters: 'Add a meter first',
+    restoreConfirmMsg: 'Current data will be replaced by this backup. Continue?',
+    restoreSuccess: 'Backup restored successfully.',
+    restoreInvalid: 'This is not a valid backup file.',
+    highUsage: 'High usage',
+    threshLine: 'Threshold',
+    printTitle: 'Electricity Meter Report',
+    printGenerated: 'Generated'
+  }
+};
+function t(key){ return I18N[currentLang][key] || key; }
+
+function setLang(lang){
+  currentLang = lang;
+  localStorage.setItem(LANG_KEY, lang);
+  applyLang();
+  renderAll();
+}
+function applyLang(){
+  const html = document.getElementById('htmlRoot');
+  html.setAttribute('lang', currentLang);
+  html.setAttribute('dir', currentLang === 'ur' ? 'rtl' : 'ltr');
+  document.getElementById('langUrBtn').classList.toggle('active', currentLang==='ur');
+  document.getElementById('langEnBtn').classList.toggle('active', currentLang==='en');
+  document.querySelectorAll('[data-i18n]').forEach(el=>{
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+}
+
+function loadData(){
+  try{ meters = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch(e){ meters = []; }
+}
+function saveData(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(meters)); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmt(n){ return Number(n).toLocaleString('en-US', {maximumFractionDigits:2}); }
+
+function sortedReadings(meter){ return [...meter.readings].sort((a,b)=> a.date.localeCompare(b.date)); }
+
+function computeStats(meter){
+  const r = sortedReadings(meter);
+  if(r.length === 0) return {first:null, last:null, total:0, rows:[], avgDaily:0};
+  const first = r[0];
+  const last = r[r.length-1];
+  let rows = [];
+  for(let i=0;i<r.length;i++){
+    const prev = i>0 ? r[i-1].value : r[0].value;
+    const diff = i===0 ? 0 : (r[i].value - prev);
+    rows.push({...r[i], diff, prevIndex:i>0});
+  }
+  const total = last.value - first.value;
+  const days = Math.max(1, (new Date(last.date) - new Date(first.date)) / 86400000);
+  const avgDaily = total / days;
+  return {first, last, total, rows, avgDaily};
+}
+
+function buildChartSVG(stats, threshold){
+  const bars = stats.rows.filter(r=>r.prevIndex);
+  if(bars.length === 0) return '';
+  const maxVal = Math.max(threshold, ...bars.map(b=>b.diff), 1);
+  const barW = 34, gap = 14, leftPad = 36, topPad = 12, chartH = 120;
+  const w = leftPad + bars.length*(barW+gap);
+  const h = chartH + topPad + 34;
+  const threshY = topPad + chartH - (threshold/maxVal)*chartH;
+
+  let barsSvg = '';
+  bars.forEach((b, i)=>{
+    const x = leftPad + i*(barW+gap);
+    const val = Math.max(b.diff, 0);
+    const barH = (val/maxVal)*chartH;
+    const y = topPad + chartH - barH;
+    const color = b.diff >= threshold ? '#F87171' : (b.diff < 0 ? '#8B95A3' : '#FFB020');
+    const shortDate = b.date.slice(5);
+    barsSvg += `
+      <rect x="${x}" y="${y}" width="${barW}" height="${Math.max(barH,2)}" rx="4" fill="${color}"/>
+      <text x="${x+barW/2}" y="${topPad+chartH+16}" text-anchor="middle" font-size="10" fill="#8B95A3">${shortDate}</text>
+      <text x="${x+barW/2}" y="${y-4}" text-anchor="middle" font-size="10" fill="#EDEFF2" class="digits">${fmt(b.diff)}</text>
+    `;
+  });
+
+  return `<svg width="${w}" height="${h}" style="min-width:${w}px">
+    <line x1="${leftPad-8}" y1="${threshY}" x2="${w}" y2="${threshY}" stroke="#F87171" stroke-dasharray="4,3" stroke-width="1.5"/>
+    <text x="0" y="${threshY-4}" font-size="10" fill="#F87171">${t('threshLine')} ${fmt(threshold)}</text>
+    ${barsSvg}
+  </svg>`;
+}
+
+function renderMeterCard(meter){
+  const stats = computeStats(meter);
+  const total = stats.total;
+  const rate = parseFloat(meter.rate) || 0;
+  const threshold = parseFloat(meter.threshold) || 150;
+  const estCost = rate>0 ? (total*rate) : null;
+  const isOver = total >= threshold;
+
+  let rowsHtml = '';
+  stats.rows.forEach(row=>{
+    const diffDisplay = row.prevIndex ? fmt(row.diff) : '—';
+    let cls = '';
+    if(row.prevIndex){ cls = row.diff >= threshold ? 'unit-up' : 'unit-ok'; }
+    rowsHtml += `<tr>
+      <td>${row.date}</td>
+      <td class="digits">${fmt(row.value)}</td>
+      <td class="digits ${cls}">${diffDisplay}</td>
+      <td>${row.note||''}</td>
+      <td class="row-actions">
+        <button class="btn-ghost btn-sm" onclick="openEditReading('${meter.id}','${row.id}')">✏️</button>
+        <button class="btn-danger btn-sm" onclick="deleteReading('${meter.id}','${row.id}')">🗑️</button>
+      </td>
+    </tr>`;
+  });
+
+  const ringPct = Math.min(1, total/threshold);
+  const ringColor = isOver ? '#F87171' : '#FFB020';
+  const circumference = 2*Math.PI*24;
+
+  const chartSvg = buildChartSVG(stats, threshold);
+
+  return `<div class="meter-card ${isOver ? 'alert' : ''}">
+    <div class="meter-head">
+      <div class="meter-title">
+        <svg class="dial" viewBox="0 0 56 56">
+          <circle cx="28" cy="28" r="24" fill="none" stroke="#2C3441" stroke-width="6"/>
+          <circle cx="28" cy="28" r="24" fill="none" stroke="${ringColor}" stroke-width="6"
+            stroke-dasharray="${circumference}" stroke-dashoffset="${circumference*(1-ringPct)}"
+            stroke-linecap="round" transform="rotate(-90 28 28)"/>
+          <text x="28" y="32" text-anchor="middle" font-size="11" fill="#EDEFF2" font-family="Consolas,monospace">⚡</text>
+        </svg>
+        <div>
+          <div class="meter-name">${meter.name}${isOver ? `<span class="badge">${t('highUsage')}</span>`:''}</div>
+          <div class="meter-loc">${meter.loc || ''}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex:none;">
+        <button class="btn-ghost btn-sm" onclick="openEditMeter('${meter.id}')">✏️ ${t('editMeterBtn')}</button>
+        <button class="btn-danger btn-sm" onclick="deleteMeter('${meter.id}')">${t('deleteMeterBtn')}</button>
+      </div>
+    </div>
+
+    <div class="stat-row">
+      <div class="stat"><div class="label">${t('firstReading')}</div><div class="value digits">${stats.first?fmt(stats.first.value):'—'}</div></div>
+      <div class="stat"><div class="label">${t('lastReading')}</div><div class="value digits">${stats.last?fmt(stats.last.value):'—'}</div></div>
+      <div class="stat"><div class="label">${t('totalUnits')}</div><div class="value digits ${isOver?'over':''}">${fmt(total)}</div></div>
+      <div class="stat"><div class="label">${t('avgDaily')}</div><div class="value digits">${fmt(stats.avgDaily)}</div></div>
+      ${estCost!==null ? `<div class="stat"><div class="label">${t('estBill')}</div><div class="value digits">${fmt(estCost)}</div></div>` : ''}
+    </div>
+
+    ${chartSvg ? `<div class="chart-wrap"><div class="chart-title">${t('dailyUsageChart')}</div>${chartSvg}</div>` : ''}
+
+    <table>
+      <thead><tr><th>${t('tableDate')}</th><th>${t('tableReading')}</th><th>${t('tableUnits')}</th><th>${t('tableNote')}</th><th></th></tr></thead>
+      <tbody>${rowsHtml || `<tr><td colspan="5" style="color:var(--text-muted)">${t('noReadings')}</td></tr>`}</tbody>
+    </table>
+
+    <div class="card-actions">
+      <button class="btn-primary btn-sm" onclick="openAddReading('${meter.id}')">➕ ${t('addReadingBtn')}</button>
+      <button class="btn-ghost btn-sm" onclick="exportPDFOne('${meter.id}')">📄 ${t('meterReportBtn')}</button>
+      <button class="btn-ghost btn-sm" onclick="openMepcoBill('${meter.id}')">🧾 ${t('mepcoBillBtn')}</button>
+    </div>
+  </div>`;
+}
+
+function renderAll(){
+  const el = document.getElementById('metersList');
+  if(meters.length === 0){
+    el.innerHTML = `<div class="empty">${t('noMeters')}</div>`;
+    return;
+  }
+  el.innerHTML = meters.map(renderMeterCard).join('');
+}
+
+// ---- Meter dialog (add + edit) ----
+function openAddMeter(){
+  document.getElementById('mEditId').value = '';
+  document.getElementById('meterDialogTitle').textContent = t('addMeterTitle');
+  document.getElementById('mName').value='';
+  document.getElementById('mLoc').value='';
+  document.getElementById('mRate').value='';
+  document.getElementById('mRefNo').value='';
+  document.getElementById('mThreshold').value='150';
+  document.getElementById('mInitReading').value='';
+  document.getElementById('mInitDate').value=todayStr();
+  document.getElementById('meterSaveBtn').textContent = t('save');
+  document.getElementById('meterDialog').showModal();
+}
+
+function openEditMeter(meterId){
+  const meter = meters.find(m=>m.id===meterId);
+  if(!meter) return;
+  document.getElementById('mEditId').value = meter.id;
+  document.getElementById('meterDialogTitle').textContent = t('editMeterTitle');
+  document.getElementById('mName').value = meter.name || '';
+  document.getElementById('mLoc').value = meter.loc || '';
+  document.getElementById('mRate').value = meter.rate || '';
+  document.getElementById('mRefNo').value = meter.refNo || '';
+  document.getElementById('mThreshold').value = meter.threshold || 150;
+
+  // Editing an existing meter edits its details; the "initial reading" fields
+  // here let the user correct the very first reading on record (if any).
+  const first = sortedReadings(meter)[0];
+  if(first){
+    document.getElementById('mInitReading').value = first.value;
+    document.getElementById('mInitDate').value = first.date;
+  } else {
+    document.getElementById('mInitReading').value = '';
+    document.getElementById('mInitDate').value = todayStr();
+  }
+  document.getElementById('meterSaveBtn').textContent = t('update');
+  document.getElementById('meterDialog').showModal();
+}
+
+function closeDialog(id){ document.getElementById(id).close(); }
+
+function saveMeter(){
+  const name = document.getElementById('mName').value.trim();
+  if(!name){ alert(t('alertName')); return; }
+  const loc = document.getElementById('mLoc').value.trim();
+  const rate = document.getElementById('mRate').value;
+  const refNo = document.getElementById('mRefNo').value.trim();
+  const threshold = document.getElementById('mThreshold').value || 150;
+  const initReading = parseFloat(document.getElementById('mInitReading').value);
+  const initDate = document.getElementById('mInitDate').value || todayStr();
+  const editId = document.getElementById('mEditId').value;
+
+  if(editId){
+    const meter = meters.find(m=>m.id===editId);
+    meter.name = name;
+    meter.loc = loc;
+    meter.rate = rate;
+    meter.refNo = refNo;
+    meter.threshold = threshold;
+    // Update (or create) the first/initial reading if a value was given
+    if(!isNaN(initReading)){
+      const sorted = sortedReadings(meter);
+      if(sorted.length > 0){
+        const firstReading = meter.readings.find(r=>r.id === sorted[0].id);
+        firstReading.value = initReading;
+        firstReading.date = initDate;
+      } else {
+        meter.readings.push({id:uid(), date:initDate, value:initReading, note: currentLang==='ur' ? 'ابتدائی ریڈنگ' : 'Initial reading'});
+      }
+    }
+  } else {
+    const meter = { id: uid(), name, loc, rate, refNo, threshold, readings: [] };
+    if(!isNaN(initReading)){
+      meter.readings.push({id:uid(), date:initDate, value:initReading, note: currentLang==='ur' ? 'ابتدائی ریڈنگ' : 'Initial reading'});
+    }
+    meters.push(meter);
+  }
+  saveData();
+  renderAll();
+  closeDialog('meterDialog');
+}
+
+function deleteMeter(id){
+  if(!confirm(t('confirmDeleteMeter'))) return;
+  meters = meters.filter(m=>m.id!==id);
+  saveData();
+  renderAll();
+}
+
+// ---- Reading dialog (add + edit) ----
+function openAddReading(meterId){
+  document.getElementById('readingDialogTitle').textContent = t('addReadingTitle');
+  document.getElementById('rMeterId').value = meterId;
+  document.getElementById('rReadingId').value = '';
+  document.getElementById('rValue').value='';
+  document.getElementById('rDate').value=todayStr();
+  document.getElementById('rNote').value='';
+  document.getElementById('readingSaveBtn').textContent = t('save');
+  document.getElementById('readingDialog').showModal();
+}
+
+function openEditReading(meterId, readingId){
+  const meter = meters.find(m=>m.id===meterId);
+  const reading = meter?.readings.find(r=>r.id===readingId);
+  if(!reading) return;
+  document.getElementById('readingDialogTitle').textContent = t('editReadingTitle');
+  document.getElementById('rMeterId').value = meterId;
+  document.getElementById('rReadingId').value = readingId;
+  document.getElementById('rValue').value = reading.value;
+  document.getElementById('rDate').value = reading.date;
+  document.getElementById('rNote').value = reading.note || '';
+  document.getElementById('readingSaveBtn').textContent = t('update');
+  document.getElementById('readingDialog').showModal();
+}
+
+function saveReading(){
+  const meterId = document.getElementById('rMeterId').value;
+  const readingId = document.getElementById('rReadingId').value;
+  const value = parseFloat(document.getElementById('rValue').value);
+  const date = document.getElementById('rDate').value || todayStr();
+  const note = document.getElementById('rNote').value.trim();
+  if(isNaN(value)){ alert(t('alertReading')); return; }
+
+  const meter = meters.find(m=>m.id===meterId);
+  if(readingId){
+    const reading = meter.readings.find(r=>r.id===readingId);
+    reading.value = value;
+    reading.date = date;
+    reading.note = note;
+  } else {
+    meter.readings.push({id:uid(), date, value, note});
+  }
+  saveData();
+  renderAll();
+  closeDialog('readingDialog');
+}
+
+function deleteReading(meterId, readingId){
+  const meter = meters.find(m=>m.id===meterId);
+  meter.readings = meter.readings.filter(r=>r.id!==readingId);
+  saveData();
+  renderAll();
+}
+
+// ---- PDF export via print ----
+function buildPrintHtml(meterList){
+  const now = new Date().toLocaleString('en-GB');
+  let html = `<h1 style="text-align:center">⚡ ${t('printTitle')}</h1>
+    <p style="text-align:center;color:#555">${t('printGenerated')}: ${now}</p>`;
+  meterList.forEach(meter=>{
+    const stats = computeStats(meter);
+    const rate = parseFloat(meter.rate) || 0;
+    const threshold = parseFloat(meter.threshold) || 150;
+    const estCost = rate>0 ? (stats.total*rate) : null;
+    html += `<h2>${meter.name} ${meter.loc? '— '+meter.loc:''}</h2>
+      ${meter.refNo ? `<p style="color:#555">MEPCO Ref#: ${meter.refNo}</p>` : ''}
+      <p>${t('firstReading')}: ${stats.first?fmt(stats.first.value):'—'} &nbsp;|&nbsp;
+         ${t('lastReading')}: ${stats.last?fmt(stats.last.value):'—'} &nbsp;|&nbsp;
+         ${t('totalUnits')}: <b style="${stats.total>=threshold?'color:#c0392b':''}">${fmt(stats.total)}</b> &nbsp;|&nbsp;
+         ${t('avgDaily')}: ${fmt(stats.avgDaily)}
+         ${estCost!==null? ' &nbsp;|&nbsp; '+t('estBill')+': <b>Rs '+fmt(estCost)+'</b>' : ''}
+      </p>
+      <table><thead><tr><th>${t('tableDate')}</th><th>${t('tableReading')}</th><th>${t('tableUnits')}</th><th>${t('tableNote')}</th></tr></thead><tbody>`;
+    stats.rows.forEach(row=>{
+      html += `<tr><td>${row.date}</td><td>${fmt(row.value)}</td><td>${row.prevIndex? fmt(row.diff):'—'}</td><td>${row.note||''}</td></tr>`;
+    });
+    html += `</tbody></table><br>`;
+  });
+  return html;
+}
+
+function doPrint(html){
+  document.getElementById('printArea').innerHTML = html;
+  window.print();
+}
+function exportPDFOne(meterId){
+  const meter = meters.find(m=>m.id===meterId);
+  doPrint(buildPrintHtml([meter]));
+}
+function exportPDFAll(){
+  if(meters.length===0){ alert(t('alertNoMeters')); return; }
+  doPrint(buildPrintHtml(meters));
+}
+
+// ---- MEPCO online bill check ----
+const MEPCO_BILL_URL = 'https://bill.pitc.com.pk/mepcobill';
+
+function copyToClipboard(text){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).catch(()=>{ legacyCopy(text); });
+  } else {
+    legacyCopy(text);
+  }
+}
+function legacyCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+}
+
+function openMepcoBill(meterId){
+  const meter = meters.find(m=>m.id===meterId);
+  const refNo = (meter && meter.refNo) ? meter.refNo.trim() : '';
+  if(!refNo){
+    alert(t('noRefSet'));
+    openEditMeter(meterId);
+    return;
+  }
+  copyToClipboard(refNo);
+  const refInput = document.getElementById('mepcoRefDisplay');
+  refInput.value = refNo;
+  document.getElementById('mepcoCopyStatus').textContent = '';
+  document.getElementById('mepcoCopyBtn').querySelector('span').textContent = t('copyBtn');
+  document.getElementById('mepcoRefDialog').setAttribute('data-ref', refNo);
+  document.getElementById('mepcoRefDialog').showModal();
+  refInput.select();
+  refInput.setSelectionRange(0, 9999);
+}
+
+function manualCopyRef(){
+  const input = document.getElementById('mepcoRefDisplay');
+  const refNo = input.value;
+  if(!refNo) return;
+  input.focus();
+  input.select();
+  input.setSelectionRange(0, 9999);
+
+  let execSuccess = false;
+  try{ execSuccess = document.execCommand('copy'); }catch(e){ execSuccess = false; }
+
+  const btnSpan = document.getElementById('mepcoCopyBtn').querySelector('span');
+  const original = btnSpan.textContent;
+
+  if(execSuccess){
+    showCopySuccess(btnSpan, original);
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(refNo)
+      .then(()=>showCopySuccess(btnSpan, original))
+      .catch(()=>showCopyManualHint());
+  } else {
+    showCopyManualHint();
+  }
+}
+
+function showCopySuccess(btnSpan, original){
+  document.getElementById('mepcoCopyStatus').textContent = t('copiedStatus');
+  document.getElementById('mepcoCopyStatus').style.color = 'var(--good)';
+  btnSpan.textContent = t('copiedStatus');
+  setTimeout(()=>{ btnSpan.textContent = original; }, 1500);
+}
+
+function showCopyManualHint(){
+  document.getElementById('mepcoCopyStatus').textContent = t('copyManualHint');
+  document.getElementById('mepcoCopyStatus').style.color = 'var(--warn)';
+}
+
+function openPortalAndClose(){
+  window.open(MEPCO_BILL_URL, '_blank');
+  closeDialog('mepcoRefDialog');
+}
+
+// ---- Backup / restore ----
+function exportBackup(){
+  const blob = new Blob([JSON.stringify(meters, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `bijli-meter-backup-${stamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importBackup(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const data = JSON.parse(e.target.result);
+      if(!Array.isArray(data)) throw new Error('invalid');
+      if(meters.length>0 && !confirm(t('restoreConfirmMsg'))) return;
+      meters = data;
+      saveData();
+      renderAll();
+      alert(t('restoreSuccess'));
+    }catch(err){
+      alert(t('restoreInvalid'));
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ---- init ----
+loadData();
+applyLang();
+renderAll();
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
