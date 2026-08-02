@@ -44,12 +44,14 @@
     background:rgba(18,22,28,0.92);
     backdrop-filter:blur(6px);
     border-bottom:1px solid var(--border);
-    padding:16px 16px 12px;
+    padding:10px 16px 12px;
     text-align:center;
   }
+  .header-top{
+    display:flex; justify-content:flex-end;
+    max-width:680px; margin:0 auto 6px;
+  }
   .lang-switch{
-    position:absolute; top:14px;
-    inset-inline-end:14px;
     display:flex; gap:4px;
     background:var(--surface-2); border:1px solid var(--border);
     border-radius:20px; padding:3px;
@@ -113,7 +115,7 @@
     flex:1;min-width:100px;text-align:center;
   }
   .stat .label{font-size:.68rem;color:var(--text-muted);}
-  .stat .value{font-size:1.1rem;color:var(--accent);font-weight:700;}
+  .stat .value{font-size:1.1rem;color:#FFFFFF;font-weight:700;}
   .stat .value.over{ color:var(--warn); }
 
   .chart-wrap{margin-top:14px;overflow-x:auto;}
@@ -169,9 +171,11 @@
 <body>
 
 <header>
-  <div class="lang-switch">
-    <button id="langUrBtn" onclick="setLang('ur')">اردو</button>
-    <button id="langEnBtn" onclick="setLang('en')">EN</button>
+  <div class="header-top">
+    <div class="lang-switch">
+      <button id="langUrBtn" onclick="setLang('ur')">اردو</button>
+      <button id="langEnBtn" onclick="setLang('en')">EN</button>
+    </div>
   </div>
   <h1>⚡ <span data-i18n="title"></span></h1>
   <p data-i18n="subtitle"></p>
@@ -691,6 +695,33 @@ function saveReading(){
   saveData();
   renderAll();
   closeDialog('readingDialog');
+  checkThresholdNotify(meter);
+}
+
+// ---- Threshold notifications ----
+function requestNotifyPermission(){
+  if('Notification' in window && Notification.permission === 'default'){
+    Notification.requestPermission().catch(()=>{});
+  }
+}
+
+function checkThresholdNotify(meter){
+  const stats = computeStats(meter);
+  const threshold = parseFloat(meter.threshold) || 150;
+  const latestRow = stats.rows[stats.rows.length - 1];
+  if(!latestRow || !latestRow.prevIndex) return;
+  if(latestRow.diff >= threshold){
+    const title = currentLang === 'ur' ? '⚡ زیادہ یونٹ استعمال' : '⚡ High Unit Usage';
+    const body = currentLang === 'ur'
+      ? `${meter.name}: ${fmt(latestRow.diff)} یونٹ استعمال ہوئے (حد: ${fmt(threshold)})`
+      : `${meter.name}: ${fmt(latestRow.diff)} units used (threshold: ${fmt(threshold)})`;
+    if('Notification' in window && Notification.permission === 'granted'){
+      try{ new Notification(title, {body, icon:'icon-192.png'}); }
+      catch(e){ alert(title + '\n' + body); }
+    } else {
+      alert(title + '\n' + body);
+    }
+  }
 }
 
 function deleteReading(meterId, readingId){
@@ -862,6 +893,7 @@ function importBackup(event){
 loadData();
 applyLang();
 renderAll();
+requestNotifyPermission();
 
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').catch(()=>{});
