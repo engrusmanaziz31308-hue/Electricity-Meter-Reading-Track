@@ -34,7 +34,9 @@
   h1,h2,h3{ font-weight:700; margin:0; }
   html[lang="ur"] h1, html[lang="ur"] h2{ font-family:'Noto Nastaliq Urdu','Jameel Noori Nastaleeq',serif; }
   .digits{
-    font-family:'Consolas','Courier New',monospace;
+    font-family:'Courier New',monospace;
+    font-variant-numeric:normal;
+    font-feature-settings:'zero' 0;
     letter-spacing:1px;
     direction:ltr;
     unicode-bidi:isolate;
@@ -188,6 +190,7 @@
     <button class="btn-ghost" onclick="exportBackup()">💾 <span data-i18n="backupBtn"></span></button>
     <button class="btn-ghost" onclick="document.getElementById('restoreFile').click()">📂 <span data-i18n="restoreBtn"></span></button>
     <input type="file" id="restoreFile" accept="application/json" style="display:none" onchange="importBackup(event)">
+    <button class="btn-ghost" onclick="openPinManage()">🔒 <span data-i18n="pinManageBtn"></span></button>
   </div>
 
   <div id="metersList"></div>
@@ -266,6 +269,36 @@
   </div>
 </dialog>
 
+<!-- Security PIN Dialog: setup / change / verify-before-delete -->
+<dialog id="pinDialog">
+  <div class="dialog-inner">
+    <h3 id="pinDialogTitle"></h3>
+    <p id="pinDialogHint" style="font-size:.82rem;color:var(--text-muted)"></p>
+
+    <div id="pinOldGroup" style="display:none">
+      <label data-i18n="pinOldLabel"></label>
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" id="pinOldInput">
+    </div>
+    <div id="pinVerifyGroup" style="display:none">
+      <label data-i18n="pinEnterLabel"></label>
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" id="pinVerifyInput">
+    </div>
+    <div id="pinNewGroup" style="display:none">
+      <label data-i18n="pinNewLabel"></label>
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" id="pinNewInput">
+      <label data-i18n="pinConfirmLabel"></label>
+      <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" id="pinConfirmInput">
+    </div>
+
+    <div id="pinError" style="font-size:.78rem;color:var(--warn);text-align:center;min-height:16px;margin-top:8px;"></div>
+
+    <div class="dialog-actions">
+      <button class="btn-ghost" onclick="closeDialog('pinDialog')" data-i18n="cancel"></button>
+      <button class="btn-primary" onclick="submitPinDialog()" data-i18n="save"></button>
+    </div>
+  </div>
+</dialog>
+
 <div id="printArea"></div>
 
 <script>
@@ -334,6 +367,22 @@ const I18N = {
     restoreConfirmMsg: 'موجودہ ڈیٹا اس بیک اپ سے تبدیل ہو جائے گا۔ جاری رکھیں؟',
     restoreSuccess: 'بیک اپ کامیابی سے بحال ہو گیا۔',
     restoreInvalid: 'یہ فائل درست بیک اپ فائل نہیں ہے۔',
+    pinManageBtn: 'سیکیورٹی پن',
+    pinOldLabel: 'موجودہ پن درج کریں',
+    pinEnterLabel: 'پن درج کریں',
+    pinNewLabel: 'نیا پن (4-8 ہندسے)',
+    pinConfirmLabel: 'نیا پن دوبارہ لکھیں',
+    pinSetupTitle: 'میٹر ڈیلیٹ کرنے کے لیے پن سیٹ کریں',
+    pinSetupHint: 'یہ پن آئندہ ہر بار کسی میٹر کو ڈیلیٹ کرنے کے لیے مانگا جائے گا۔',
+    pinVerifyTitle: 'میٹر ڈیلیٹ کرنے کے لیے پن درج کریں',
+    pinVerifyHint: 'حفاظتی وجوہات کی بنا پر، میٹر ڈیلیٹ کرنے سے پہلے اپنا پن درج کریں۔',
+    pinChangeTitle: 'سیکیورٹی پن تبدیل کریں',
+    pinChangeHint: 'اگر پہلے سے پن موجود ہے تو پہلے اسے درج کریں، پھر نیا پن سیٹ کریں۔',
+    pinMismatch: 'دونوں نئے پن ایک جیسے نہیں ہیں۔',
+    pinTooShort: 'پن کم از کم 4 ہندسوں کا ہونا چاہیے۔',
+    pinWrongOld: 'موجودہ پن غلط ہے۔',
+    pinWrong: 'غلط پن — دوبارہ کوشش کریں۔',
+    pinSetSuccess: 'پن کامیابی سے سیٹ ہو گیا۔',
     highUsage: 'زیادہ استعمال',
     threshLine: 'حد',
     printTitle: 'بجلی میٹر رپورٹ',
@@ -398,6 +447,22 @@ const I18N = {
     restoreConfirmMsg: 'Current data will be replaced by this backup. Continue?',
     restoreSuccess: 'Backup restored successfully.',
     restoreInvalid: 'This is not a valid backup file.',
+    pinManageBtn: 'Security PIN',
+    pinOldLabel: 'Enter current PIN',
+    pinEnterLabel: 'Enter PIN',
+    pinNewLabel: 'New PIN (4-8 digits)',
+    pinConfirmLabel: 'Re-enter new PIN',
+    pinSetupTitle: 'Set a PIN to Delete Meters',
+    pinSetupHint: 'This PIN will be asked every time you delete a meter from now on.',
+    pinVerifyTitle: 'Enter PIN to Delete Meter',
+    pinVerifyHint: 'For security, enter your PIN before deleting this meter.',
+    pinChangeTitle: 'Change Security PIN',
+    pinChangeHint: 'If a PIN already exists, enter it first, then set a new one.',
+    pinMismatch: 'The two new PINs do not match.',
+    pinTooShort: 'PIN must be at least 4 digits.',
+    pinWrongOld: 'Current PIN is incorrect.',
+    pinWrong: 'Incorrect PIN — try again.',
+    pinSetSuccess: 'PIN set successfully.',
     highUsage: 'High usage',
     threshLine: 'Threshold',
     printTitle: 'Electricity Meter Report',
@@ -659,11 +724,102 @@ function saveMeter(){
   closeDialog('meterDialog');
 }
 
+const PIN_KEY = 'emt_pin';
+let pinDialogMode = null; // 'setup' | 'verify' | 'change'
+let pinPendingMeterId = null;
+
+function getPin(){ return localStorage.getItem(PIN_KEY) || ''; }
+function setPin(pin){ localStorage.setItem(PIN_KEY, pin); }
+
 function deleteMeter(id){
   if(!confirm(t('confirmDeleteMeter'))) return;
+  pinPendingMeterId = id;
+  if(!getPin()){
+    openPinDialog('setup');
+  } else {
+    openPinDialog('verify');
+  }
+}
+
+function actuallyDeleteMeter(id){
   meters = meters.filter(m=>m.id!==id);
   saveData();
   renderAll();
+}
+
+function openPinManage(){
+  pinPendingMeterId = null;
+  openPinDialog('change');
+}
+
+function openPinDialog(mode){
+  pinDialogMode = mode;
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('pinOldInput').value = '';
+  document.getElementById('pinVerifyInput').value = '';
+  document.getElementById('pinNewInput').value = '';
+  document.getElementById('pinConfirmInput').value = '';
+
+  const hasPin = !!getPin();
+  document.getElementById('pinOldGroup').style.display = (mode === 'change' && hasPin) ? 'block' : 'none';
+  document.getElementById('pinVerifyGroup').style.display = (mode === 'verify') ? 'block' : 'none';
+  document.getElementById('pinNewGroup').style.display = (mode === 'setup' || mode === 'change') ? 'block' : 'none';
+
+  if(mode === 'setup'){
+    document.getElementById('pinDialogTitle').textContent = t('pinSetupTitle');
+    document.getElementById('pinDialogHint').textContent = t('pinSetupHint');
+  } else if(mode === 'verify'){
+    document.getElementById('pinDialogTitle').textContent = t('pinVerifyTitle');
+    document.getElementById('pinDialogHint').textContent = t('pinVerifyHint');
+  } else {
+    document.getElementById('pinDialogTitle').textContent = t('pinChangeTitle');
+    document.getElementById('pinDialogHint').textContent = t('pinChangeHint');
+  }
+  document.getElementById('pinDialog').showModal();
+}
+
+function submitPinDialog(){
+  const errEl = document.getElementById('pinError');
+  errEl.textContent = '';
+
+  if(pinDialogMode === 'verify'){
+    const entered = document.getElementById('pinVerifyInput').value.trim();
+    if(entered !== getPin()){
+      errEl.textContent = t('pinWrong');
+      return;
+    }
+    closeDialog('pinDialog');
+    if(pinPendingMeterId){ actuallyDeleteMeter(pinPendingMeterId); pinPendingMeterId = null; }
+    return;
+  }
+
+  // 'setup' or 'change' mode: validate and save a new PIN
+  if(pinDialogMode === 'change' && getPin()){
+    const oldEntered = document.getElementById('pinOldInput').value.trim();
+    if(oldEntered !== getPin()){
+      errEl.textContent = t('pinWrongOld');
+      return;
+    }
+  }
+  const newPin = document.getElementById('pinNewInput').value.trim();
+  const confirmPin = document.getElementById('pinConfirmInput').value.trim();
+  if(newPin.length < 4){
+    errEl.textContent = t('pinTooShort');
+    return;
+  }
+  if(newPin !== confirmPin){
+    errEl.textContent = t('pinMismatch');
+    return;
+  }
+  setPin(newPin);
+  closeDialog('pinDialog');
+
+  if(pinDialogMode === 'setup' && pinPendingMeterId){
+    actuallyDeleteMeter(pinPendingMeterId);
+    pinPendingMeterId = null;
+  } else {
+    alert(t('pinSetSuccess'));
+  }
 }
 
 // ---- Reading dialog (add + edit) ----
