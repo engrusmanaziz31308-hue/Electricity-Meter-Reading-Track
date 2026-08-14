@@ -312,6 +312,9 @@
     <div id="pinVerifyGroup" style="display:none">
       <label data-i18n="pinEnterLabel"></label>
       <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" id="pinVerifyInput">
+      <div style="text-align:center;margin-top:6px;">
+        <button class="btn-ghost btn-sm" onclick="forgotPin()" style="color:var(--accent-2);border:none;text-decoration:underline;background:none;" data-i18n="forgotPinBtn"></button>
+      </div>
     </div>
     <div id="pinNewGroup" style="display:none">
       <label data-i18n="pinNewLabel"></label>
@@ -427,6 +430,9 @@ const I18N = {
     pinWrongOld: 'موجودہ پن غلط ہے۔',
     pinWrong: 'غلط پن — دوبارہ کوشش کریں۔',
     pinSetSuccess: 'پن کامیابی سے سیٹ ہو گیا۔',
+    forgotPinBtn: 'پن بھول گئے؟',
+    forgotPinConfirm: 'کیا آپ واقعی پن ری سیٹ کرنا چاہتے ہیں؟ آپ کا میٹرز کا ڈیٹا محفوظ رہے گا، صرف پرانا پن ہٹا کر آپ نیا پن سیٹ کر سکیں گے۔',
+    pinResetDone: 'پن ری سیٹ ہو گیا ہے۔ اب "سیکیورٹی پن" بٹن سے نیا پن سیٹ کر لیں۔',
     highUsage: 'زیادہ استعمال',
     threshLine: 'حد',
     printTitle: 'بجلی میٹر رپورٹ',
@@ -524,6 +530,9 @@ const I18N = {
     pinWrongOld: 'Current PIN is incorrect.',
     pinWrong: 'Incorrect PIN — try again.',
     pinSetSuccess: 'PIN set successfully.',
+    forgotPinBtn: 'Forgot PIN?',
+    forgotPinConfirm: 'Are you sure you want to reset your PIN? Your meter data stays safe — only the old PIN is removed, then you can set a new one.',
+    pinResetDone: 'PIN has been reset. Use the "Security PIN" button to set a new one.',
     highUsage: 'High usage',
     threshLine: 'Threshold',
     printTitle: 'Electricity Meter Report',
@@ -832,6 +841,18 @@ let pinPendingMeterId = null;
 
 function getPin(){ return localStorage.getItem(PIN_KEY) || ''; }
 function setPin(pin){ localStorage.setItem(PIN_KEY, pin); }
+
+function forgotPin(){
+  if(!confirm(t('forgotPinConfirm'))) return;
+  localStorage.removeItem(PIN_KEY);
+  document.getElementById('pinError').textContent = '';
+  if(pinPendingMeterId){
+    openPinDialog('setup');
+  } else {
+    closeDialog('pinDialog');
+    alert(t('pinResetDone'));
+  }
+}
 
 function deleteMeter(id){
   if(!confirm(t('confirmDeleteMeter'))) return;
