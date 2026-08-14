@@ -70,6 +70,17 @@
   .wrap{max-width:680px;margin:0 auto;padding:16px;position:relative;}
 
   .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+  .type-tabs{
+    display:flex; gap:6px; margin-bottom:16px;
+    background:var(--surface-2); border:1px solid var(--border);
+    border-radius:12px; padding:4px; overflow-x:auto;
+  }
+  .type-tab{
+    flex:1; min-width:70px; white-space:nowrap;
+    border:none; border-radius:9px; padding:9px 8px; font-size:.82rem;
+    background:transparent; color:var(--text-muted);
+  }
+  .type-tab.active{ background:var(--accent); color:#1a1200; font-weight:700; }
   button{
     font-family:inherit;font-size:.88rem;cursor:pointer;
     border:1px solid var(--border);
@@ -193,6 +204,13 @@
     <button class="btn-ghost" onclick="openPinManage()">🔒 <span data-i18n="pinManageBtn"></span></button>
   </div>
 
+  <div class="type-tabs" id="typeTabs">
+    <button class="type-tab active" data-type="all" onclick="setFilter('all')">📋 <span data-i18n="filterAll"></span></button>
+    <button class="type-tab" data-type="electricity" onclick="setFilter('electricity')">⚡ <span data-i18n="meterTypeElectricityShort"></span></button>
+    <button class="type-tab" data-type="gas" onclick="setFilter('gas')">🔥 <span data-i18n="meterTypeGasShort"></span></button>
+    <button class="type-tab" data-type="water" onclick="setFilter('water')">💧 <span data-i18n="meterTypeWaterShort"></span></button>
+  </div>
+
   <div id="metersList"></div>
 </div>
 
@@ -209,9 +227,21 @@
     <input type="text" id="mLoc">
     <label data-i18n="rateLabel"></label>
     <input type="number" step="0.01" id="mRate">
-    <label data-i18n="companyLabel"></label>
-    <select id="mCompany" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:inherit;font-size:.95rem;">
+    <label data-i18n="meterTypeLabel"></label>
+    <select id="mMeterType" onchange="populateCompanyDropdown(this.value)" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:inherit;font-size:.95rem;">
+      <option value="electricity" id="mtOptElectricity">⚡ Electricity</option>
+      <option value="gas" id="mtOptGas">🔥 Gas</option>
+      <option value="water" id="mtOptWater">💧 Water</option>
     </select>
+    <label data-i18n="companyLabel"></label>
+    <select id="mCompany" onchange="toggleManualCompanyFields()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:inherit;font-size:.95rem;">
+    </select>
+    <div id="manualCompanyFields" style="display:none">
+      <label data-i18n="manualCompanyNameLabel"></label>
+      <input type="text" id="mCompanyManualName">
+      <label data-i18n="manualCompanyUrlLabel"></label>
+      <input type="text" id="mCompanyManualUrl" placeholder="https://...">
+    </div>
     <label data-i18n="refLabel"></label>
     <input type="text" id="mRefNo" maxlength="14" placeholder="e.g. 07123456789012">
     <div style="font-size:.72rem;color:var(--text-muted);margin-top:-4px" data-i18n="refHint"></div>
@@ -324,6 +354,18 @@ const I18N = {
     refLabel: 'ریفرنس نمبر (14 ہندسے، اختیاری)',
     companyLabel: 'بجلی کمپنی (DISCO) منتخب کریں',
     companyPlaceholder: '-- کمپنی منتخب کریں --',
+    meterTypeLabel: 'میٹر کی قسم',
+    meterTypeElectricity: '⚡ بجلی',
+    meterTypeGas: '🔥 گیس',
+    meterTypeWater: '💧 پانی',
+    filterAll: 'سب',
+    meterTypeElectricityShort: 'بجلی',
+    meterTypeGasShort: 'گیس',
+    meterTypeWaterShort: 'پانی',
+    noMetersOfType: 'اس قسم کا کوئی میٹر ابھی شامل نہیں ہوا۔',
+    manualCompanyOption: '-- دیگر / خود کمپنی درج کریں --',
+    manualCompanyNameLabel: 'کمپنی کا نام (خود لکھیں)',
+    manualCompanyUrlLabel: 'بل چیک لنک (اختیاری)',
     refHint: 'یہ نمبر آپ کے پرانے بل کے اوپری حصے پر لکھا ہوتا ہے',
     mepcoBillBtn: 'آن لائن بل چیک کریں',
     refCopied: 'ریفرنس نمبر کاپی ہو گیا ✓ اب کھلنے والے صفحے پر پیسٹ کر دیں',
@@ -388,7 +430,10 @@ const I18N = {
     highUsage: 'زیادہ استعمال',
     threshLine: 'حد',
     printTitle: 'بجلی میٹر رپورٹ',
-    printGenerated: 'تیار کردہ'
+    printGenerated: 'تیار کردہ',
+    summaryPageTitle: 'خلاصہ رپورٹ',
+    tableMeterName: 'میٹر کا نام',
+    tableRefNo: 'ریفرنس نمبر'
   },
   en: {
     title: 'Electricity Meter Tracker',
@@ -406,6 +451,18 @@ const I18N = {
     refLabel: 'Reference number (14 digits, optional)',
     companyLabel: 'Electricity Company (DISCO)',
     companyPlaceholder: '-- Select Company --',
+    meterTypeLabel: 'Meter Type',
+    meterTypeElectricity: '⚡ Electricity',
+    meterTypeGas: '🔥 Gas',
+    meterTypeWater: '💧 Water',
+    filterAll: 'All',
+    meterTypeElectricityShort: 'Electricity',
+    meterTypeGasShort: 'Gas',
+    meterTypeWaterShort: 'Water',
+    noMetersOfType: 'No meters of this type added yet.',
+    manualCompanyOption: '-- Other / Enter Manually --',
+    manualCompanyNameLabel: 'Company Name (type your own)',
+    manualCompanyUrlLabel: 'Bill Check Link (optional)',
     refHint: 'Found at the top of your previous paper bill',
     mepcoBillBtn: 'Check Online Bill',
     refCopied: 'Reference number copied ✓ paste it on the page that just opened',
@@ -470,7 +527,10 @@ const I18N = {
     highUsage: 'High usage',
     threshLine: 'Threshold',
     printTitle: 'Electricity Meter Report',
-    printGenerated: 'Generated'
+    printGenerated: 'Generated',
+    summaryPageTitle: 'Summary Report',
+    tableMeterName: 'Meter Name',
+    tableRefNo: 'Reference No.'
   }
 };
 function t(key){ return I18N[currentLang][key] || key; }
@@ -494,8 +554,15 @@ function applyLang(){
   if(companySel && companySel.options.length > 0){
     const prevValue = companySel.value;
     companySel.options[0].textContent = t('companyPlaceholder');
+    companySel.options[companySel.options.length-1].textContent = t('manualCompanyOption');
     companySel.value = prevValue;
   }
+  const mtE = document.getElementById('mtOptElectricity');
+  const mtG = document.getElementById('mtOptGas');
+  const mtW = document.getElementById('mtOptWater');
+  if(mtE) mtE.textContent = t('meterTypeElectricity');
+  if(mtG) mtG.textContent = t('meterTypeGas');
+  if(mtW) mtW.textContent = t('meterTypeWater');
 }
 
 function loadData(){
@@ -582,6 +649,7 @@ function renderMeterCard(meter){
   const ringPct = Math.min(1, total/threshold);
   const ringColor = isOver ? '#F87171' : '#FFB020';
   const circumference = 2*Math.PI*24;
+  const typeIcon = meter.meterType === 'gas' ? '🔥' : (meter.meterType === 'water' ? '💧' : '⚡');
 
   const chartSvg = buildChartSVG(stats, threshold);
 
@@ -593,7 +661,7 @@ function renderMeterCard(meter){
           <circle cx="28" cy="28" r="24" fill="none" stroke="${ringColor}" stroke-width="6"
             stroke-dasharray="${circumference}" stroke-dashoffset="${circumference*(1-ringPct)}"
             stroke-linecap="round" transform="rotate(-90 28 28)"/>
-          <text x="28" y="32" text-anchor="middle" font-size="11" fill="#EDEFF2" font-family="Consolas,monospace">⚡</text>
+          <text x="28" y="32" text-anchor="middle" font-size="11" fill="#EDEFF2" font-family="Consolas,monospace">${typeIcon}</text>
         </svg>
         <div>
           <div class="meter-name">${meter.name}${isOver ? `<span class="badge">${t('highUsage')}</span>`:''}</div>
@@ -629,13 +697,30 @@ function renderMeterCard(meter){
   </div>`;
 }
 
+let currentFilter = 'all';
+
+function setFilter(type){
+  currentFilter = type;
+  document.querySelectorAll('.type-tab').forEach(btn=>{
+    btn.classList.toggle('active', btn.getAttribute('data-type') === type);
+  });
+  renderAll();
+}
+
 function renderAll(){
   const el = document.getElementById('metersList');
   if(meters.length === 0){
     el.innerHTML = `<div class="empty">${t('noMeters')}</div>`;
     return;
   }
-  el.innerHTML = meters.map(renderMeterCard).join('');
+  const filtered = currentFilter === 'all'
+    ? meters
+    : meters.filter(m => (m.meterType || 'electricity') === currentFilter);
+  if(filtered.length === 0){
+    el.innerHTML = `<div class="empty">${t('noMetersOfType')}</div>`;
+    return;
+  }
+  el.innerHTML = filtered.map(renderMeterCard).join('');
 }
 
 // ---- Meter dialog (add + edit) ----
@@ -645,7 +730,12 @@ function openAddMeter(){
   document.getElementById('mName').value='';
   document.getElementById('mLoc').value='';
   document.getElementById('mRate').value='';
+  document.getElementById('mMeterType').value='electricity';
+  populateCompanyDropdown('electricity');
   document.getElementById('mCompany').value='';
+  document.getElementById('mCompanyManualName').value='';
+  document.getElementById('mCompanyManualUrl').value='';
+  toggleManualCompanyFields();
   document.getElementById('mRefNo').value='';
   document.getElementById('mThreshold').value='150';
   document.getElementById('mInitReading').value='';
@@ -662,7 +752,12 @@ function openEditMeter(meterId){
   document.getElementById('mName').value = meter.name || '';
   document.getElementById('mLoc').value = meter.loc || '';
   document.getElementById('mRate').value = meter.rate || '';
+  document.getElementById('mMeterType').value = meter.meterType || 'electricity';
+  populateCompanyDropdown(meter.meterType || 'electricity');
   document.getElementById('mCompany').value = meter.company || '';
+  document.getElementById('mCompanyManualName').value = meter.companyManualName || '';
+  document.getElementById('mCompanyManualUrl').value = meter.companyManualUrl || '';
+  toggleManualCompanyFields();
   document.getElementById('mRefNo').value = meter.refNo || '';
   document.getElementById('mThreshold').value = meter.threshold || 150;
 
@@ -687,7 +782,10 @@ function saveMeter(){
   if(!name){ alert(t('alertName')); return; }
   const loc = document.getElementById('mLoc').value.trim();
   const rate = document.getElementById('mRate').value;
+  const meterType = document.getElementById('mMeterType').value;
   const company = document.getElementById('mCompany').value;
+  const companyManualName = document.getElementById('mCompanyManualName').value.trim();
+  const companyManualUrl = document.getElementById('mCompanyManualUrl').value.trim();
   const refNo = document.getElementById('mRefNo').value.trim();
   const threshold = document.getElementById('mThreshold').value || 150;
   const initReading = parseFloat(document.getElementById('mInitReading').value);
@@ -699,7 +797,10 @@ function saveMeter(){
     meter.name = name;
     meter.loc = loc;
     meter.rate = rate;
+    meter.meterType = meterType;
     meter.company = company;
+    meter.companyManualName = companyManualName;
+    meter.companyManualUrl = companyManualUrl;
     meter.refNo = refNo;
     meter.threshold = threshold;
     // Update (or create) the first/initial reading if a value was given
@@ -714,7 +815,7 @@ function saveMeter(){
       }
     }
   } else {
-    const meter = { id: uid(), name, loc, rate, company, refNo, threshold, readings: [] };
+    const meter = { id: uid(), name, loc, rate, meterType, company, companyManualName, companyManualUrl, refNo, threshold, readings: [] };
     if(!isNaN(initReading)){
       meter.readings.push({id:uid(), date:initDate, value:initReading, note: currentLang==='ur' ? 'ابتدائی ریڈنگ' : 'Initial reading'});
     }
@@ -906,9 +1007,30 @@ function deleteReading(meterId, readingId){
 }
 
 // ---- PDF export via print ----
+function buildSummaryHtml(meterList){
+  let rows = '';
+  meterList.forEach(meter=>{
+    const stats = computeStats(meter);
+    const initReading = stats.first ? fmt(stats.first.value) : '—';
+    const currReading = stats.last ? fmt(stats.last.value) : '—';
+    const consumed = (stats.first && stats.last) ? fmt(stats.total) : '—';
+    const avgDaily = (stats.first && stats.last) ? fmt(stats.avgDaily) : '—';
+    const ref = meter.refNo || '—';
+    rows += `<tr><td style="text-align:left">${meter.name}</td><td>${ref}</td><td>${initReading}</td><td>${currReading}</td><td>${consumed}</td><td>${avgDaily}</td></tr>`;
+  });
+  return `<div style="page-break-after:always;">
+    <h1 style="text-align:center">⚡ ${t('summaryPageTitle')}</h1>
+    <p style="text-align:center;color:#555">${t('printGenerated')}: ${new Date().toLocaleString('en-GB')}</p>
+    <table><thead><tr>
+      <th>${t('tableMeterName')}</th><th>${t('tableRefNo')}</th><th>${t('firstReading')}</th><th>${t('lastReading')}</th><th>${t('totalUnits')}</th><th>${t('avgDaily')}</th>
+    </tr></thead><tbody>${rows}</tbody></table>
+  </div>`;
+}
+
 function buildPrintHtml(meterList){
   const now = new Date().toLocaleString('en-GB');
-  let html = `<h1 style="text-align:center">⚡ ${t('printTitle')}</h1>
+  let html = buildSummaryHtml(meterList);
+  html += `<h1 style="text-align:center">⚡ ${t('printTitle')}</h1>
     <p style="text-align:center;color:#555">${t('printGenerated')}: ${now}</p>`;
   meterList.forEach(meter=>{
     const stats = computeStats(meter);
@@ -916,7 +1038,7 @@ function buildPrintHtml(meterList){
     const threshold = parseFloat(meter.threshold) || 150;
     const estCost = rate>0 ? (stats.total*rate) : null;
     html += `<h2>${meter.name} ${meter.loc? '— '+meter.loc:''}</h2>
-      ${meter.refNo ? `<p style="color:#555">${(DISCO_LIST.find(d=>d.code===meter.company)||{}).name || 'DISCO'} Ref#: ${meter.refNo}</p>` : ''}
+      ${meter.refNo ? `<p style="color:#555">${(meter.company==='manual' ? (meter.companyManualName||'Company') : (findCompany(meter.meterType||'electricity', meter.company)||{}).name) || 'Company'} Ref#: ${meter.refNo}</p>` : ''}
       <p>${t('firstReading')}: ${stats.first?fmt(stats.first.value):'—'} &nbsp;|&nbsp;
          ${t('lastReading')}: ${stats.last?fmt(stats.last.value):'—'} &nbsp;|&nbsp;
          ${t('totalUnits')}: <b style="${stats.total>=threshold?'color:#c0392b':''}">${fmt(stats.total)}</b> &nbsp;|&nbsp;
@@ -945,36 +1067,69 @@ function exportPDFAll(){
   doPrint(buildPrintHtml(meters));
 }
 
-// ---- Pakistan DISCOs (electricity companies) online bill check ----
-const DISCO_LIST = [
-  { code:'mepco',  name:'MEPCO (Multan)',        url:'https://bill.pitc.com.pk/mepcobill' },
-  { code:'lesco',  name:'LESCO (Lahore)',        url:'https://bill.pitc.com.pk/lescobill' },
-  { code:'fesco',  name:'FESCO (Faisalabad)',    url:'https://bill.pitc.com.pk/fescobill' },
-  { code:'iesco',  name:'IESCO (Islamabad)',     url:'https://bill.pitc.com.pk/iescobill' },
-  { code:'gepco',  name:'GEPCO (Gujranwala)',    url:'https://bill.pitc.com.pk/gepcobill' },
-  { code:'pesco',  name:'PESCO (Peshawar)',      url:'https://bill.pitc.com.pk/pescobill' },
-  { code:'hesco',  name:'HESCO (Hyderabad)',     url:'https://bill.pitc.com.pk/hescobill' },
-  { code:'sepco',  name:'SEPCO (Sukkur)',        url:'https://bill.pitc.com.pk/sepcobill' },
-  { code:'qesco',  name:'QESCO (Quetta)',        url:'https://bill.pitc.com.pk/qescobill' },
-  { code:'tesco',  name:'TESCO (Tribal Areas)',  url:'https://bill.pitc.com.pk/tescobill' },
-  { code:'hazeco', name:'HAZECO (Hazara)',       url:'https://bill.pitc.com.pk/hazecobill' },
-  { code:'ajk',    name:'AJK Electric',          url:'https://bill.pitc.com.pk/ajkbill' },
-  { code:'ke',     name:'K-Electric (Karachi)',  url:'https://www.ke.com.pk/customer-services/bills-and-e-payments' }
-];
+// ---- Pakistan utility companies (electricity, gas, water) online bill check ----
+const COMPANY_LISTS = {
+  electricity: [
+    { code:'mepco',  name:'MEPCO (Multan)',        url:'https://bill.pitc.com.pk/mepcobill' },
+    { code:'lesco',  name:'LESCO (Lahore)',        url:'https://bill.pitc.com.pk/lescobill' },
+    { code:'fesco',  name:'FESCO (Faisalabad)',    url:'https://bill.pitc.com.pk/fescobill' },
+    { code:'iesco',  name:'IESCO (Islamabad)',     url:'https://bill.pitc.com.pk/iescobill' },
+    { code:'gepco',  name:'GEPCO (Gujranwala)',    url:'https://bill.pitc.com.pk/gepcobill' },
+    { code:'pesco',  name:'PESCO (Peshawar)',      url:'https://bill.pitc.com.pk/pescobill' },
+    { code:'hesco',  name:'HESCO (Hyderabad)',     url:'https://bill.pitc.com.pk/hescobill' },
+    { code:'sepco',  name:'SEPCO (Sukkur)',        url:'https://bill.pitc.com.pk/sepcobill' },
+    { code:'qesco',  name:'QESCO (Quetta)',        url:'https://bill.pitc.com.pk/qescobill' },
+    { code:'tesco',  name:'TESCO (Tribal Areas)',  url:'https://bill.pitc.com.pk/tescobill' },
+    { code:'hazeco', name:'HAZECO (Hazara)',       url:'https://bill.pitc.com.pk/hazecobill' },
+    { code:'ajk',    name:'AJK Electric',          url:'https://bill.pitc.com.pk/ajkbill' },
+    { code:'ke',     name:'K-Electric (Karachi)',  url:'https://www.ke.com.pk/customer-services/bills-and-e-payments' }
+  ],
+  gas: [
+    { code:'sngpl', name:'SNGPL (Punjab/KPK/Islamabad/AJK)', url:'https://www.sngpl.com.pk/' },
+    { code:'ssgc',  name:'SSGC (Sindh/Balochistan)',         url:'https://www.ssgc.com.pk/' }
+  ],
+  water: [
+    { code:'wasa_rwp', name:'WASA Rawalpindi', url:'https://wasarwp.gop.pk/Onlinebill' },
+    { code:'kwsc',      name:'KWSC (Karachi Water & Sewerage)', url:'https://www.kwsc.gos.pk/' }
+  ]
+};
+const MANUAL_COMPANY = { code:'manual', name:'', url:'' };
 
-function populateCompanyDropdown(){
+function populateCompanyDropdown(type){
+  const meterTypeSel = document.getElementById('mMeterType');
   const sel = document.getElementById('mCompany');
-  if(!sel || sel.options.length > 0) return;
+  if(!sel || !meterTypeSel) return;
+  type = type || meterTypeSel.value || 'electricity';
+
+  const list = COMPANY_LISTS[type] || [];
+  sel.innerHTML = '';
   const blank = document.createElement('option');
   blank.value = '';
   blank.textContent = t('companyPlaceholder');
   sel.appendChild(blank);
-  DISCO_LIST.forEach(d=>{
+  list.forEach(d=>{
     const opt = document.createElement('option');
     opt.value = d.code;
     opt.textContent = d.name;
     sel.appendChild(opt);
   });
+  const manualOpt = document.createElement('option');
+  manualOpt.value = 'manual';
+  manualOpt.textContent = t('manualCompanyOption');
+  sel.appendChild(manualOpt);
+  toggleManualCompanyFields();
+}
+
+function toggleManualCompanyFields(){
+  const sel = document.getElementById('mCompany');
+  const show = sel && sel.value === 'manual';
+  document.getElementById('manualCompanyFields').style.display = show ? 'block' : 'none';
+}
+
+function findCompany(meterType, companyCode){
+  if(companyCode === 'manual') return null; // handled separately using saved manual fields
+  const list = COMPANY_LISTS[meterType] || COMPANY_LISTS.electricity;
+  return list.find(d=>d.code === companyCode) || null;
 }
 
 function copyToClipboard(text){
@@ -999,8 +1154,17 @@ function legacyCopy(text){
 function openMepcoBill(meterId){
   const meter = meters.find(m=>m.id===meterId);
   const refNo = (meter && meter.refNo) ? meter.refNo.trim() : '';
-  const disco = meter ? DISCO_LIST.find(d=>d.code === meter.company) : null;
-  if(!refNo || !disco){
+  let company = null;
+  if(meter){
+    if(meter.company === 'manual'){
+      if(meter.companyManualName){
+        company = { name: meter.companyManualName, url: meter.companyManualUrl || '' };
+      }
+    } else {
+      company = findCompany(meter.meterType || 'electricity', meter.company);
+    }
+  }
+  if(!refNo || !company){
     alert(t('noRefSet'));
     openEditMeter(meterId);
     return;
@@ -1011,8 +1175,14 @@ function openMepcoBill(meterId){
   document.getElementById('mepcoCopyStatus').textContent = '';
   document.getElementById('mepcoCopyBtn').querySelector('span').textContent = t('copyBtn');
   document.getElementById('mepcoRefDialog').setAttribute('data-ref', refNo);
-  document.getElementById('mepcoRefDialog').setAttribute('data-url', disco.url);
-  document.getElementById('openPortalLabel').textContent = t('openPortalBtn') + ' — ' + disco.name;
+  document.getElementById('mepcoRefDialog').setAttribute('data-url', company.url || '');
+  const portalBtn = document.getElementById('openPortalLabel').closest('button');
+  if(company.url){
+    portalBtn.style.display = '';
+    document.getElementById('openPortalLabel').textContent = t('openPortalBtn') + ' — ' + company.name;
+  } else {
+    portalBtn.style.display = 'none';
+  }
   document.getElementById('mepcoRefDialog').showModal();
   refInput.select();
   refInput.setSelectionRange(0, 9999);
