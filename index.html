@@ -321,13 +321,31 @@
       <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" id="pinNewInput">
       <label data-i18n="pinConfirmLabel"></label>
       <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" id="pinConfirmInput">
+
+      <label data-i18n="secQLabel"></label>
+      <select id="pinSecQuestion" onchange="toggleCustomSecQ()" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:inherit;font-size:.95rem;">
+        <option value="pet" data-i18n="secQPet"></option>
+        <option value="city" data-i18n="secQCity"></option>
+        <option value="mother" data-i18n="secQMother"></option>
+        <option value="color" data-i18n="secQColor"></option>
+        <option value="custom" data-i18n="secQCustom"></option>
+      </select>
+      <input type="text" id="pinSecQuestionCustom" style="display:none;margin-top:8px;" data-i18n-placeholder="secQCustomPlaceholder">
+      <label data-i18n="secALabel"></label>
+      <input type="text" id="pinSecAnswer">
+    </div>
+
+    <div id="pinForgotGroup" style="display:none">
+      <p id="pinForgotQuestion" style="font-weight:700;"></p>
+      <label data-i18n="secAEnterLabel"></label>
+      <input type="text" id="pinForgotAnswer">
     </div>
 
     <div id="pinError" style="font-size:.78rem;color:var(--warn);text-align:center;min-height:16px;margin-top:8px;"></div>
 
     <div class="dialog-actions">
       <button class="btn-ghost" onclick="closeDialog('pinDialog')" data-i18n="cancel"></button>
-      <button class="btn-primary" onclick="submitPinDialog()" data-i18n="save"></button>
+      <button class="btn-primary" id="pinSubmitBtn" onclick="submitPinDialog()" data-i18n="save"></button>
     </div>
   </div>
 </dialog>
@@ -431,8 +449,22 @@ const I18N = {
     pinWrong: 'غلط پن — دوبارہ کوشش کریں۔',
     pinSetSuccess: 'پن کامیابی سے سیٹ ہو گیا۔',
     forgotPinBtn: 'پن بھول گئے؟',
-    forgotPinConfirm: 'کیا آپ واقعی پن ری سیٹ کرنا چاہتے ہیں؟ آپ کا میٹرز کا ڈیٹا محفوظ رہے گا، صرف پرانا پن ہٹا کر آپ نیا پن سیٹ کر سکیں گے۔',
+    forgotPinConfirmNoQ: 'کوئی سیکیورٹی سوال سیٹ نہیں ہے، اس لیے پن براہ راست ری سیٹ ہوگا۔ آپ کا میٹرز کا ڈیٹا محفوظ رہے گا۔ جاری رکھیں؟',
     pinResetDone: 'پن ری سیٹ ہو گیا ہے۔ اب "سیکیورٹی پن" بٹن سے نیا پن سیٹ کر لیں۔',
+    secQLabel: 'سیکیورٹی سوال منتخب کریں',
+    secQPet: 'آپ کے پہلے پالتو جانور کا نام؟',
+    secQCity: 'آپ کے پیدائشی شہر کا نام؟',
+    secQMother: 'آپ کی امی کا پہلا نام؟',
+    secQColor: 'آپ کا پسندیدہ رنگ؟',
+    secQCustom: '-- اپنا سوال خود لکھیں --',
+    secQCustomPlaceholder: 'اپنا سوال یہاں لکھیں',
+    secQCustomRequired: 'براہ کرم اپنا سیکیورٹی سوال لکھیں۔',
+    secALabel: 'اس سوال کا جواب',
+    secARequired: 'براہ کرم سیکیورٹی سوال کا جواب درج کریں۔',
+    secAEnterLabel: 'جواب درج کریں',
+    secAHint: 'صحیح جواب دینے پر پرانا پن ہٹا کر نیا پن سیٹ کرنے کا موقع ملے گا۔',
+    secAWrong: 'غلط جواب — دوبارہ کوشش کریں۔',
+    verifyBtn: 'تصدیق کریں',
     highUsage: 'زیادہ استعمال',
     threshLine: 'حد',
     printTitle: 'بجلی میٹر رپورٹ',
@@ -531,8 +563,22 @@ const I18N = {
     pinWrong: 'Incorrect PIN — try again.',
     pinSetSuccess: 'PIN set successfully.',
     forgotPinBtn: 'Forgot PIN?',
-    forgotPinConfirm: 'Are you sure you want to reset your PIN? Your meter data stays safe — only the old PIN is removed, then you can set a new one.',
+    forgotPinConfirmNoQ: 'No security question is set up, so the PIN will be reset directly. Your meter data stays safe. Continue?',
     pinResetDone: 'PIN has been reset. Use the "Security PIN" button to set a new one.',
+    secQLabel: 'Choose a Security Question',
+    secQPet: 'What was the name of your first pet?',
+    secQCity: 'What is your city of birth?',
+    secQMother: "What is your mother's first name?",
+    secQColor: 'What is your favorite color?',
+    secQCustom: '-- Write your own question --',
+    secQCustomPlaceholder: 'Type your question here',
+    secQCustomRequired: 'Please write your custom security question.',
+    secALabel: 'Answer to this question',
+    secARequired: 'Please enter an answer to the security question.',
+    secAEnterLabel: 'Enter answer',
+    secAHint: 'Answer correctly to remove the old PIN and set a new one.',
+    secAWrong: 'Wrong answer — try again.',
+    verifyBtn: 'Verify',
     highUsage: 'High usage',
     threshLine: 'Threshold',
     printTitle: 'Electricity Meter Report',
@@ -558,6 +604,9 @@ function applyLang(){
   document.getElementById('langEnBtn').classList.toggle('active', currentLang==='en');
   document.querySelectorAll('[data-i18n]').forEach(el=>{
     el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el=>{
+    el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
   });
   const companySel = document.getElementById('mCompany');
   if(companySel && companySel.options.length > 0){
@@ -836,22 +885,39 @@ function saveMeter(){
 }
 
 const PIN_KEY = 'emt_pin';
-let pinDialogMode = null; // 'setup' | 'verify' | 'change'
+const SEC_Q_KEY = 'emt_secq';
+const SEC_QTEXT_KEY = 'emt_secq_text';
+const SEC_A_KEY = 'emt_seca';
+let pinDialogMode = null; // 'setup' | 'verify' | 'change' | 'forgot'
 let pinPendingMeterId = null;
 
 function getPin(){ return localStorage.getItem(PIN_KEY) || ''; }
 function setPin(pin){ localStorage.setItem(PIN_KEY, pin); }
+function getSecQuestionCode(){ return localStorage.getItem(SEC_Q_KEY) || ''; }
+function getSecQuestionText(){ return localStorage.getItem(SEC_QTEXT_KEY) || ''; }
+function getSecAnswer(){ return localStorage.getItem(SEC_A_KEY) || ''; }
+function normalizeAnswer(s){ return (s||'').trim().toLowerCase(); }
+
+function toggleCustomSecQ(){
+  const sel = document.getElementById('pinSecQuestion');
+  document.getElementById('pinSecQuestionCustom').style.display = (sel.value === 'custom') ? 'block' : 'none';
+}
+
+function secQuestionLabel(code){
+  const map = { pet:t('secQPet'), city:t('secQCity'), mother:t('secQMother'), color:t('secQColor') };
+  return map[code] || '';
+}
 
 function forgotPin(){
-  if(!confirm(t('forgotPinConfirm'))) return;
-  localStorage.removeItem(PIN_KEY);
-  document.getElementById('pinError').textContent = '';
-  if(pinPendingMeterId){
-    openPinDialog('setup');
-  } else {
-    closeDialog('pinDialog');
-    alert(t('pinResetDone'));
+  if(!getSecAnswer()){
+    // No security question was ever set up (e.g. PIN created before this feature existed)
+    if(!confirm(t('forgotPinConfirmNoQ'))) return;
+    localStorage.removeItem(PIN_KEY);
+    document.getElementById('pinError').textContent = '';
+    openPinDialog(pinPendingMeterId ? 'setup' : 'setup');
+    return;
   }
+  openPinDialog('forgot');
 }
 
 function deleteMeter(id){
@@ -882,11 +948,19 @@ function openPinDialog(mode){
   document.getElementById('pinVerifyInput').value = '';
   document.getElementById('pinNewInput').value = '';
   document.getElementById('pinConfirmInput').value = '';
+  document.getElementById('pinSecAnswer').value = '';
+  document.getElementById('pinSecQuestionCustom').value = '';
+  document.getElementById('pinForgotAnswer').value = '';
+  document.getElementById('pinSecQuestion').value = 'pet';
+  toggleCustomSecQ();
 
   const hasPin = !!getPin();
   document.getElementById('pinOldGroup').style.display = (mode === 'change' && hasPin) ? 'block' : 'none';
   document.getElementById('pinVerifyGroup').style.display = (mode === 'verify') ? 'block' : 'none';
   document.getElementById('pinNewGroup').style.display = (mode === 'setup' || mode === 'change') ? 'block' : 'none';
+  document.getElementById('pinForgotGroup').style.display = (mode === 'forgot') ? 'block' : 'none';
+
+  document.getElementById('pinSubmitBtn').textContent = t('save');
 
   if(mode === 'setup'){
     document.getElementById('pinDialogTitle').textContent = t('pinSetupTitle');
@@ -894,6 +968,13 @@ function openPinDialog(mode){
   } else if(mode === 'verify'){
     document.getElementById('pinDialogTitle').textContent = t('pinVerifyTitle');
     document.getElementById('pinDialogHint').textContent = t('pinVerifyHint');
+  } else if(mode === 'forgot'){
+    document.getElementById('pinDialogTitle').textContent = t('forgotPinBtn');
+    document.getElementById('pinDialogHint').textContent = t('secAHint');
+    document.getElementById('pinSubmitBtn').textContent = t('verifyBtn');
+    const qCode = getSecQuestionCode();
+    const qText = qCode === 'custom' ? getSecQuestionText() : secQuestionLabel(qCode);
+    document.getElementById('pinForgotQuestion').textContent = qText;
   } else {
     document.getElementById('pinDialogTitle').textContent = t('pinChangeTitle');
     document.getElementById('pinDialogHint').textContent = t('pinChangeHint');
@@ -901,9 +982,29 @@ function openPinDialog(mode){
   document.getElementById('pinDialog').showModal();
 }
 
+function submitForgotAnswer(){
+  const errEl = document.getElementById('pinError');
+  const entered = normalizeAnswer(document.getElementById('pinForgotAnswer').value);
+  if(entered !== normalizeAnswer(getSecAnswer())){
+    errEl.textContent = t('secAWrong');
+    return;
+  }
+  localStorage.removeItem(PIN_KEY);
+  localStorage.removeItem(SEC_Q_KEY);
+  localStorage.removeItem(SEC_QTEXT_KEY);
+  localStorage.removeItem(SEC_A_KEY);
+  errEl.textContent = '';
+  openPinDialog('setup');
+}
+
 function submitPinDialog(){
   const errEl = document.getElementById('pinError');
   errEl.textContent = '';
+
+  if(pinDialogMode === 'forgot'){
+    submitForgotAnswer();
+    return;
+  }
 
   if(pinDialogMode === 'verify'){
     const entered = document.getElementById('pinVerifyInput').value.trim();
@@ -916,7 +1017,7 @@ function submitPinDialog(){
     return;
   }
 
-  // 'setup' or 'change' mode: validate and save a new PIN
+  // 'setup' or 'change' mode: validate and save a new PIN + security question
   if(pinDialogMode === 'change' && getPin()){
     const oldEntered = document.getElementById('pinOldInput').value.trim();
     if(oldEntered !== getPin()){
@@ -934,7 +1035,22 @@ function submitPinDialog(){
     errEl.textContent = t('pinMismatch');
     return;
   }
+  const qCode = document.getElementById('pinSecQuestion').value;
+  const qCustomText = document.getElementById('pinSecQuestionCustom').value.trim();
+  const secAnswer = document.getElementById('pinSecAnswer').value.trim();
+  if(qCode === 'custom' && !qCustomText){
+    errEl.textContent = t('secQCustomRequired');
+    return;
+  }
+  if(!secAnswer){
+    errEl.textContent = t('secARequired');
+    return;
+  }
+
   setPin(newPin);
+  localStorage.setItem(SEC_Q_KEY, qCode);
+  localStorage.setItem(SEC_QTEXT_KEY, qCode === 'custom' ? qCustomText : '');
+  localStorage.setItem(SEC_A_KEY, secAnswer);
   closeDialog('pinDialog');
 
   if(pinDialogMode === 'setup' && pinPendingMeterId){
