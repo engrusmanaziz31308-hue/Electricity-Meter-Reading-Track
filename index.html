@@ -8,6 +8,9 @@
 <meta name="theme-color" content="#12161C">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
+<!-- Firebase (compat build — works with plain <script>, no bundler needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
 <style>
   :root{
     --bg:#12161C;
@@ -372,15 +375,67 @@ const LANG_KEY = 'emt_lang';
 let meters = [];
 let currentLang = localStorage.getItem(LANG_KEY) || 'ur';
 
+// ---- Firebase sync (silent, no login, single shared database) ----
+const firebaseConfig = {
+  apiKey: "AIzaSyAL3jQZjr8G1Ac7ecG4gGJPE7pkDLPoKTw",
+  authDomain: "bijli-meter-sync.firebaseapp.com",
+  databaseURL: "https://bijli-meter-sync-default-rtdb.firebaseio.com",
+  projectId: "bijli-meter-sync",
+  storageBucket: "bijli-meter-sync.firebasestorage.app",
+  messagingSenderId: "694204217789",
+  appId: "1:694204217789:web:52673633330ed90bb63ad4"
+};
+let metersRef = null;
+let firebaseReady = false;
+let suppressNextRemoteRender = false;
+
+function initFirebaseSync(){
+  try{
+    firebase.initializeApp(firebaseConfig);
+    metersRef = firebase.database().ref('meters');
+  }catch(e){
+    console.warn('Firebase init failed, staying in local-only mode.', e);
+    return;
+  }
+
+  // One-time initial sync: prefer whatever is already in the cloud;
+  // if the cloud is empty but this device has local data, push it up.
+  metersRef.once('value').then(function(snap){
+    const remote = snap.val();
+    if(Array.isArray(remote) && remote.length){
+      meters = remote;
+      saveLocalOnly();
+      renderAll();
+    } else if(meters.length){
+      suppressNextRemoteRender = true;
+      metersRef.set(meters).catch(function(err){
+        console.warn('Initial push to Firebase failed.', err);
+      });
+    }
+    firebaseReady = true;
+
+    // Live listener: any change from any device updates this view automatically.
+    metersRef.on('value', function(snap2){
+      if(suppressNextRemoteRender){ suppressNextRemoteRender = false; return; }
+      const data = snap2.val();
+      meters = Array.isArray(data) ? data : [];
+      saveLocalOnly();
+      renderAll();
+    });
+  }).catch(function(err){
+    console.warn('Firebase sync unavailable, using local storage only.', err);
+  });
+}
+
 const I18N = {
   ur: {
     title: 'بجلی میٹر ٹریکر',
-    subtitle: 'آف لائن ایپ — ڈیٹا صرف اسی فون/براؤزر میں محفوظ ہوتا ہے',
+    subtitle: 'آپ کا ڈیٹا خودکار طور پر تمام آلات میں سِنک ہوتا ہے',
     addMeterBtn: 'نیا میٹر شامل کریں',
     fullReportBtn: 'مکمل رپورٹ (PDF)',
     backupBtn: 'بیک اپ محفوظ کریں',
     restoreBtn: 'بیک اپ بحال کریں',
-    footerNote: 'تمام ڈیٹا آپ کے فون کی مقامی سٹوریج میں محفوظ رہتا ہے۔ باقاعدگی سے بیک اپ لینا نہ بھولیں۔',
+    footerNote: 'ڈیٹا کلاؤڈ میں محفوظ اور سِنک ہوتا ہے۔ اضافی حفاظت کے لیے پھر بھی کبھی کبھار بیک اپ لے لیا کریں۔',
     addMeterTitle: 'نیا میٹر شامل کریں',
     nameLabel: 'میٹر کا نام (مثلاً: گھر، دکان، اوپر والا حصہ)',
     locLabel: 'مقام / تفصیل (اختیاری)',
@@ -491,12 +546,12 @@ const I18N = {
   },
   en: {
     title: 'Electricity Meter Tracker',
-    subtitle: 'Offline app — your data stays only on this phone/browser',
+    subtitle: 'Your data syncs automatically across all your devices',
     addMeterBtn: 'Add New Meter',
     fullReportBtn: 'Full Report (PDF)',
     backupBtn: 'Save Backup',
     restoreBtn: 'Restore Backup',
-    footerNote: 'All data is stored locally on your phone. Remember to back up regularly.',
+    footerNote: 'Data is stored in the cloud and synced. It\'s still a good idea to keep occasional backups.',
     addMeterTitle: 'Add New Meter',
     nameLabel: 'Meter name (e.g. Home, Shop, Upper Portion)',
     locLabel: 'Location / description (optional)',
@@ -641,11 +696,20 @@ function applyLang(){
   if(mtW) mtW.textContent = t('meterTypeWater');
 }
 
+function saveLocalOnly(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(meters)); }
 function loadData(){
   try{ meters = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
   catch(e){ meters = []; }
 }
-function saveData(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(meters)); }
+function saveData(){
+  saveLocalOnly();
+  if(firebaseReady && metersRef){
+    suppressNextRemoteRender = true;
+    metersRef.set(meters).catch(function(err){
+      console.warn('Firebase sync failed, change stays local for now.', err);
+    });
+  }
+}
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function fmt(n){ return Number(n).toLocaleString('en-US', {maximumFractionDigits:2}); }
@@ -1443,6 +1507,7 @@ applyLang();
 populateCompanyDropdown();
 renderAll();
 requestNotifyPermission();
+initFirebaseSync();
 
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').catch(()=>{});
